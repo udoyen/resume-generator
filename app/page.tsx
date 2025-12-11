@@ -1,20 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
+import { ResumeDocument } from "@/components/ResumeDocument";
+
+// Fix for React-PDF in Next.js: Dynamically import the PDFDownloadLink
+const PDFDownloadLink = dynamic(
+  () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
+  {
+    ssr: false,
+    loading: () => <p>Loading download button...</p>,
+  }
+);
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState("");
-  const [jobDescription, setJobDescription] = useState(""); // New State
-  const [rewrittenResume, setRewrittenResume] = useState<any>(null); // New State
+  const [jobDescription, setJobDescription] = useState("");
+  const [rewrittenResume, setRewrittenResume] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false); // New Loading State
+  const [isGenerating, setIsGenerating] = useState(false);
 
+  // ... (keep your handleFileChange, handleUpload, handleGenerate functions exactly as they were) ...
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFile(e.target.files[0]);
-      setExtractedText(""); // Clear previous text on new upload
-      setRewrittenResume(null); // Clear previous result
+      setExtractedText(""); 
+      setRewrittenResume(null); 
     }
   };
 
@@ -57,6 +69,7 @@ export default function Home() {
     }
   };
 
+
   return (
     <main className="flex min-h-screen flex-col items-center p-12 bg-gray-50">
       <div className="w-full max-w-4xl space-y-8">
@@ -82,7 +95,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Step 2: Job Description (Only shows after parsing) */}
+        {/* Step 2: Job Description */}
         {extractedText && (
           <div className="bg-white p-6 rounded-lg shadow space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <h2 className="text-xl font-semibold">2. Paste the Job Description</h2>
@@ -102,13 +115,29 @@ export default function Home() {
           </div>
         )}
 
-        {/* Step 3: Result Preview */}
+        {/* Step 3: Result & Download */}
         {rewrittenResume && (
           <div className="bg-white p-6 rounded-lg shadow space-y-4 border-2 border-green-100">
-            <h2 className="text-xl font-semibold text-green-800">3. AI Result</h2>
-            <div className="p-4 bg-gray-50 rounded h-96 overflow-y-auto font-mono text-xs">
-              {JSON.stringify(rewrittenResume, null, 2)}
+            <h2 className="text-xl font-semibold text-green-800">3. Your Tailored Resume</h2>
+            
+            <div className="flex justify-center py-4">
+              <PDFDownloadLink
+                document={<ResumeDocument data={rewrittenResume} />}
+                fileName={`Tailored_Resume.pdf`}
+                className="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg transition-transform hover:scale-105"
+              >
+                {/*@ts-ignore*/}
+                {({ loading }) => (loading ? "Preparing PDF..." : "Download PDF Now")}
+              </PDFDownloadLink>
             </div>
+
+            {/* Optional: Keep the JSON view for debugging if you want */}
+            <details className="mt-4">
+              <summary className="cursor-pointer text-gray-500 text-sm">View Raw JSON</summary>
+              <div className="p-4 bg-gray-50 rounded h-40 overflow-y-auto font-mono text-xs mt-2">
+                {JSON.stringify(rewrittenResume, null, 2)}
+              </div>
+            </details>
           </div>
         )}
       </div>

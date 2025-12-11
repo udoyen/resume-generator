@@ -9,15 +9,28 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState(""); // <--- New State for LinkedIn
+  const [linkedinUrl, setLinkedinUrl] = useState("");
   const [rewrittenResume, setRewrittenResume] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  
+  // This key is used to force the file input to re-render (clear itself) when we reset
+  const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const handleStartOver = () => {
+    setFile(null);
+    setExtractedText("");
+    setJobDescription("");
+    setLinkedinUrl("");
+    setRewrittenResume(null);
+    setResetKey((prev) => prev + 1); // Force input to clear
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -53,7 +66,6 @@ export default function Home() {
       const response = await fetch("/api/rewrite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Pass the linkedinUrl to the backend
         body: JSON.stringify({ 
           resumeText: extractedText, 
           jobDescription, 
@@ -71,7 +83,6 @@ export default function Home() {
     }
   };
 
-  // --- PDF DOWNLOAD ---
   const downloadPdf = async () => {
     if (!rewrittenResume) return;
     try {
@@ -91,7 +102,6 @@ export default function Home() {
     }
   };
 
-  // --- WORD / GOOGLE DOC DOWNLOAD ---
   const downloadWord = async () => {
     if (!rewrittenResume) return;
 
@@ -100,19 +110,16 @@ export default function Home() {
         {
           properties: {},
           children: [
-            // Name
             new Paragraph({
               text: rewrittenResume.personalInfo.name,
               heading: HeadingLevel.TITLE,
               alignment: AlignmentType.CENTER,
             }),
-            // Contact Line with REAL Hyperlink
             new Paragraph({
               alignment: AlignmentType.CENTER,
               children: [
                 new TextRun(rewrittenResume.personalInfo.email),
                 new TextRun(" | "),
-                // Create a real ExternalHyperlink for Word
                 new ExternalHyperlink({
                   children: [
                     new TextRun({
@@ -129,8 +136,6 @@ export default function Home() {
               ],
             }),
             new Paragraph({ text: "" }),
-
-            // Summary
             new Paragraph({
               text: "Professional Summary",
               heading: HeadingLevel.HEADING_2,
@@ -139,8 +144,6 @@ export default function Home() {
               text: rewrittenResume.summary,
             }),
             new Paragraph({ text: "" }),
-
-            // Experience
             new Paragraph({
               text: "Experience",
               heading: HeadingLevel.HEADING_2,
@@ -161,8 +164,6 @@ export default function Home() {
               ),
             ]),
             new Paragraph({ text: "" }),
-
-            // Skills
             new Paragraph({
               text: "Skills",
               heading: HeadingLevel.HEADING_2,
@@ -182,14 +183,29 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center p-12 bg-gray-50">
-      <div className="w-full max-w-4xl space-y-8">
-        <h1 className="text-4xl font-bold text-center text-gray-800">AI Resume Builder</h1>
+      <div className="w-full max-w-4xl space-y-8 relative">
+        
+        {/* Header Section with Reset Button */}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 relative">
+          <h1 className="text-4xl font-bold text-gray-800">AI Resume Builder</h1>
+          
+          {/* Show 'Start Over' only if there is extracted text (an active session) */}
+          {extractedText && (
+            <button
+              onClick={handleStartOver}
+              className="mt-4 md:mt-0 text-sm text-gray-500 hover:text-red-600 underline decoration-dotted underline-offset-4 transition-colors"
+            >
+              Start New Resume
+            </button>
+          )}
+        </div>
 
         {/* Step 1: Upload */}
         <div className="bg-white p-6 rounded-lg shadow space-y-4">
           <h2 className="text-xl font-semibold">1. Upload your Current Resume</h2>
           <div className="flex gap-4">
             <input
+              key={resetKey} // Used to force-clear the input on reset
               type="file"
               accept=".pdf"
               onChange={handleFileChange}
@@ -210,7 +226,6 @@ export default function Home() {
           <div className="bg-white p-6 rounded-lg shadow space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <h2 className="text-xl font-semibold">2. Enter Details</h2>
             
-            {/* New LinkedIn Input */}
             <div className="space-y-2">
                <label className="text-sm font-medium text-gray-700">LinkedIn Profile URL (Optional)</label>
                <input
@@ -247,7 +262,7 @@ export default function Home() {
           <div className="bg-white p-6 rounded-lg shadow space-y-4 border-2 border-green-100">
             <h2 className="text-xl font-semibold text-green-800">3. Your Tailored Resume</h2>
             
-            <div className="flex justify-center gap-4 py-4">
+            <div className="flex justify-center gap-4 py-4 flex-wrap">
               <button
                 onClick={downloadPdf}
                 className="bg-red-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-red-700 shadow-lg transition-transform hover:scale-105"

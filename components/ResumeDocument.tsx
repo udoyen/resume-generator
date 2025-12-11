@@ -1,0 +1,124 @@
+import React from 'react';
+import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+
+// Define styles for the PDF
+const styles = StyleSheet.create({
+  page: {
+    padding: 30,
+    fontFamily: 'Helvetica',
+    fontSize: 11,
+    lineHeight: 1.5,
+  },
+  header: {
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    paddingBottom: 10,
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: 'bold', // Helvetica-Bold is standard
+    marginBottom: 4,
+    color: '#2d3748',
+  },
+  contact: {
+    fontSize: 10,
+    color: '#718096',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 15,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    color: '#2b6cb0',
+  },
+  jobBlock: {
+    marginBottom: 10,
+  },
+  jobHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+    fontWeight: 'bold',
+  },
+  companyName: {
+    fontWeight: 'bold',
+  },
+  bulletPoint: {
+    flexDirection: 'row',
+    marginBottom: 2,
+  },
+  bullet: {
+    width: 10,
+    fontSize: 10,
+  },
+  bulletText: {
+    flex: 1,
+    fontSize: 10,
+  },
+  skillList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  skillBadge: {
+    backgroundColor: '#ebf8ff',
+    padding: '2 6',
+    borderRadius: 4,
+    fontSize: 9,
+    color: '#2b6cb0',
+  },
+});
+
+// The Component
+export const ResumeDocument = ({ data }: { data: any }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.name}>{data.personalInfo.name}</Text>
+        <Text style={styles.contact}>{data.personalInfo.contact}</Text>
+      </View>
+
+      {/* Summary */}
+      <View>
+        <Text style={styles.sectionTitle}>Professional Summary</Text>
+        <Text style={{ fontSize: 10, marginBottom: 10 }}>{data.summary}</Text>
+      </View>
+
+      {/* Experience */}
+      <View>
+        <Text style={styles.sectionTitle}>Experience</Text>
+        {data.experience.map((job: any, index: number) => (
+          <View key={index} style={styles.jobBlock}>
+            <View style={styles.jobHeader}>
+              <Text style={{ fontWeight: 'bold' }}>{job.role} | {job.company}</Text>
+              <Text style={{ color: '#718096', fontSize: 10 }}>{job.duration}</Text>
+            </View>
+            {job.description.map((point: string, i: number) => (
+              <View key={i} style={styles.bulletPoint}>
+                <Text style={styles.bullet}>•</Text>
+                <Text style={styles.bulletText}>{point}</Text>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+
+      {/* Skills */}
+      <View>
+        <Text style={styles.sectionTitle}>Skills</Text>
+        <View style={styles.skillList}>
+          {data.skills.map((skill: string, index: number) => (
+            <Text key={index} style={styles.skillBadge}>
+              {skill}
+            </Text>
+          ))}
+        </View>
+      </View>
+
+    </Page>
+  </Document>
+);

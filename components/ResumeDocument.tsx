@@ -1,7 +1,6 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Link } from '@react-pdf/renderer';
 
-// Define styles for the PDF
 const styles = StyleSheet.create({
   page: {
     padding: 30,
@@ -13,17 +12,25 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
-    paddingBottom: 10,
+    paddingBottom: 15,
+    alignItems: 'center', 
   },
   name: {
     fontSize: 24,
-    fontWeight: 'bold', // Helvetica-Bold is standard
-    marginBottom: 4,
+    fontWeight: 'bold',
     color: '#2d3748',
+    marginBottom: 8,
   },
-  contact: {
+  contactRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10, // Creates space between items
     fontSize: 10,
     color: '#718096',
+  },
+  link: {
+    color: '#2b6cb0',
+    textDecoration: 'none',
   },
   sectionTitle: {
     fontSize: 14,
@@ -40,9 +47,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 2,
-    fontWeight: 'bold',
-  },
-  companyName: {
     fontWeight: 'bold',
   },
   bulletPoint: {
@@ -71,7 +75,6 @@ const styles = StyleSheet.create({
   },
 });
 
-// The Component
 export const ResumeDocument = ({ data }: { data: any }) => (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -79,7 +82,18 @@ export const ResumeDocument = ({ data }: { data: any }) => (
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.name}>{data.personalInfo.name}</Text>
-        <Text style={styles.contact}>{data.personalInfo.contact}</Text>
+        
+        {/* Contact Row: Separate items = Better control */}
+        <View style={styles.contactRow}>
+          <Text>{data.personalInfo.email}</Text>
+          <Text>|</Text>
+          {/* This is the Clickable Link */}
+          <Link src={data.personalInfo.linkedin} style={styles.link}>
+            LinkedIn Profile
+          </Link>
+          <Text>|</Text>
+          <Text>{data.personalInfo.phone}</Text>
+        </View>
       </View>
 
       {/* Summary */}

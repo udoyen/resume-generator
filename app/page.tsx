@@ -1,27 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import dynamic from "next/dynamic";
+import { useState, useEffect } from "react";
 import { ResumeDocument } from "@/components/ResumeDocument";
-
-// Fix for React-PDF in Next.js: Dynamically import the PDFDownloadLink
-const PDFDownloadLink = dynamic(
-  () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
-  {
-    ssr: false,
-    loading: () => <p>Loading download button...</p>,
-  }
-);
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ExternalHyperlink } from "docx";
+import { saveAs } from "file-saver";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState(""); // <--- New State for LinkedIn
   const [rewrittenResume, setRewrittenResume] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  // ... (keep your handleFileChange, handleUpload, handleGenerate functions exactly as they were) ...
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFile(e.target.files[0]);
@@ -56,7 +53,12 @@ export default function Home() {
       const response = await fetch("/api/rewrite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeText: extractedText, jobDescription }),
+        // Pass the linkedinUrl to the backend
+        body: JSON.stringify({ 
+          resumeText: extractedText, 
+          jobDescription, 
+          linkedinUrl 
+        }),
       });
 
       const data = await response.json();
@@ -69,6 +71,114 @@ export default function Home() {
     }
   };
 
+  // --- PDF DOWNLOAD ---
+  const downloadPdf = async () => {
+    if (!rewrittenResume) return;
+    try {
+      const { pdf } = await import("@react-pdf/renderer");
+      const blob = await pdf(<ResumeDocument data={rewrittenResume} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const safeName = rewrittenResume.personalInfo.name.replace(/\s+/g, '_') || "Resume";
+      link.download = `Tailored_Resume_${safeName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("PDF Generation failed:", error);
+      alert("Failed to generate PDF.");
+    }
+  };
+
+  // --- WORD / GOOGLE DOC DOWNLOAD ---
+  const downloadWord = async () => {
+    if (!rewrittenResume) return;
+
+    const doc = new Document({
+      sections: [
+        {
+          properties: {},
+          children: [
+            // Name
+            new Paragraph({
+              text: rewrittenResume.personalInfo.name,
+              heading: HeadingLevel.TITLE,
+              alignment: AlignmentType.CENTER,
+            }),
+            // Contact Line with REAL Hyperlink
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun(rewrittenResume.personalInfo.email),
+                new TextRun(" | "),
+                // Create a real ExternalHyperlink for Word
+                new ExternalHyperlink({
+                  children: [
+                    new TextRun({
+                      text: "LinkedIn Profile",
+                      style: "Hyperlink",
+                      color: "0563C1",
+                      underline: { type: "single" },
+                    }),
+                  ],
+                  link: rewrittenResume.personalInfo.linkedin || "",
+                }),
+                new TextRun(" | "),
+                new TextRun(rewrittenResume.personalInfo.phone),
+              ],
+            }),
+            new Paragraph({ text: "" }),
+
+            // Summary
+            new Paragraph({
+              text: "Professional Summary",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph({
+              text: rewrittenResume.summary,
+            }),
+            new Paragraph({ text: "" }),
+
+            // Experience
+            new Paragraph({
+              text: "Experience",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            ...rewrittenResume.experience.flatMap((job: any) => [
+              new Paragraph({
+                children: [
+                  new TextRun({ text: `${job.role} | ${job.company}`, bold: true }),
+                  new TextRun({ text: `  (${job.duration})`, italics: true }),
+                ],
+                spacing: { before: 200 },
+              }),
+              ...job.description.map((point: string) => 
+                new Paragraph({
+                  text: point,
+                  bullet: { level: 0 },
+                })
+              ),
+            ]),
+            new Paragraph({ text: "" }),
+
+            // Skills
+            new Paragraph({
+              text: "Skills",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph({
+              text: rewrittenResume.skills.join(", "),
+            }),
+          ],
+        },
+      ],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const safeName = rewrittenResume.personalInfo.name.replace(/\s+/g, '_') || "Resume";
+    saveAs(blob, `Tailored_Resume_${safeName}.docx`);
+  };
 
   return (
     <main className="flex min-h-screen flex-col items-center p-12 bg-gray-50">
@@ -95,16 +205,33 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Step 2: Job Description */}
+        {/* Step 2: Job Description & LinkedIn */}
         {extractedText && (
           <div className="bg-white p-6 rounded-lg shadow space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-xl font-semibold">2. Paste the Job Description</h2>
-            <textarea
-              className="w-full h-40 p-3 border rounded focus:ring-2 focus:ring-blue-500 text-gray-700"
-              placeholder="Paste the JD here..."
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-            />
+            <h2 className="text-xl font-semibold">2. Enter Details</h2>
+            
+            {/* New LinkedIn Input */}
+            <div className="space-y-2">
+               <label className="text-sm font-medium text-gray-700">LinkedIn Profile URL (Optional)</label>
+               <input
+                type="text"
+                placeholder="e.g. https://www.linkedin.com/in/yourname"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 text-gray-700"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Job Description</label>
+              <textarea
+                className="w-full h-40 p-3 border rounded focus:ring-2 focus:ring-blue-500 text-gray-700"
+                placeholder="Paste the JD here..."
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+              />
+            </div>
+            
             <button
               onClick={handleGenerate}
               disabled={!jobDescription || isGenerating}
@@ -116,22 +243,26 @@ export default function Home() {
         )}
 
         {/* Step 3: Result & Download */}
-        {rewrittenResume && (
+        {rewrittenResume && isClient && (
           <div className="bg-white p-6 rounded-lg shadow space-y-4 border-2 border-green-100">
             <h2 className="text-xl font-semibold text-green-800">3. Your Tailored Resume</h2>
             
-            <div className="flex justify-center py-4">
-              <PDFDownloadLink
-                document={<ResumeDocument data={rewrittenResume} />}
-                fileName={`Tailored_Resume.pdf`}
-                className="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg transition-transform hover:scale-105"
+            <div className="flex justify-center gap-4 py-4">
+              <button
+                onClick={downloadPdf}
+                className="bg-red-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-red-700 shadow-lg transition-transform hover:scale-105"
               >
-                {/*@ts-ignore*/}
-                {({ loading }) => (loading ? "Preparing PDF..." : "Download PDF Now")}
-              </PDFDownloadLink>
+                Download PDF
+              </button>
+              
+              <button
+                onClick={downloadWord}
+                className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 shadow-lg transition-transform hover:scale-105"
+              >
+                Download Word / Google Doc
+              </button>
             </div>
 
-            {/* Optional: Keep the JSON view for debugging if you want */}
             <details className="mt-4">
               <summary className="cursor-pointer text-gray-500 text-sm">View Raw JSON</summary>
               <div className="p-4 bg-gray-50 rounded h-40 overflow-y-auto font-mono text-xs mt-2">

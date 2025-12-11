@@ -10,12 +10,11 @@ export default function Home() {
   const [extractedText, setExtractedText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [customInstructions, setCustomInstructions] = useState(""); 
   const [rewrittenResume, setRewrittenResume] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  
-  // This key is used to force the file input to re-render (clear itself) when we reset
   const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
@@ -27,8 +26,9 @@ export default function Home() {
     setExtractedText("");
     setJobDescription("");
     setLinkedinUrl("");
+    setCustomInstructions("");
     setRewrittenResume(null);
-    setResetKey((prev) => prev + 1); // Force input to clear
+    setResetKey((prev) => prev + 1);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -69,7 +69,8 @@ export default function Home() {
         body: JSON.stringify({ 
           resumeText: extractedText, 
           jobDescription, 
-          linkedinUrl 
+          linkedinUrl,
+          customInstructions
         }),
       });
 
@@ -110,11 +111,13 @@ export default function Home() {
         {
           properties: {},
           children: [
+            // Name
             new Paragraph({
               text: rewrittenResume.personalInfo.name,
               heading: HeadingLevel.TITLE,
               alignment: AlignmentType.CENTER,
             }),
+            // Contact
             new Paragraph({
               alignment: AlignmentType.CENTER,
               children: [
@@ -136,6 +139,8 @@ export default function Home() {
               ],
             }),
             new Paragraph({ text: "" }),
+
+            // Summary
             new Paragraph({
               text: "Professional Summary",
               heading: HeadingLevel.HEADING_2,
@@ -144,6 +149,8 @@ export default function Home() {
               text: rewrittenResume.summary,
             }),
             new Paragraph({ text: "" }),
+
+            // Experience
             new Paragraph({
               text: "Experience",
               heading: HeadingLevel.HEADING_2,
@@ -164,6 +171,67 @@ export default function Home() {
               ),
             ]),
             new Paragraph({ text: "" }),
+
+            // Projects
+            ...(rewrittenResume.projects?.length ? [
+              new Paragraph({
+                text: "Key Projects",
+                heading: HeadingLevel.HEADING_2,
+              }),
+              ...rewrittenResume.projects.flatMap((proj: any) => [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: `${proj.name} | ${proj.role} | ${proj.duration}`, bold: true }),
+                    proj.link ? new TextRun({ text: ` [Link]`, color: "0563C1" }) : new TextRun(""),
+                  ],
+                  spacing: { before: 100 },
+                }),
+                ...proj.description.map((point: string) => 
+                  new Paragraph({
+                    text: point,
+                    bullet: { level: 0 },
+                  })
+                )
+              ]),
+              new Paragraph({ text: "" }),
+            ] : []),
+
+            // Education
+            new Paragraph({
+              text: "Education",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            ...(rewrittenResume.education || []).map((edu: any) => 
+              new Paragraph({
+                children: [
+                  new TextRun({ text: edu.institution, bold: true }),
+                  new TextRun(` - ${edu.degree} (${edu.year})`),
+                ],
+                bullet: { level: 0 }, 
+              })
+            ),
+            new Paragraph({ text: "" }),
+
+            // --- UPDATED: Certifications (No Dates) ---
+            ...(rewrittenResume.certifications?.length ? [
+              new Paragraph({
+                text: "Certifications & Training",
+                heading: HeadingLevel.HEADING_2,
+              }),
+              ...rewrittenResume.certifications.map((cert: any) => 
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: cert.name, bold: true }),
+                    new TextRun(` - ${cert.issuer}`),
+                  ],
+                  bullet: { level: 0 },
+                })
+              ),
+              new Paragraph({ text: "" }),
+            ] : []),
+            // ------------------------------------------
+
+            // Skills
             new Paragraph({
               text: "Skills",
               heading: HeadingLevel.HEADING_2,
@@ -184,12 +252,8 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center p-12 bg-gray-50">
       <div className="w-full max-w-4xl space-y-8 relative">
-        
-        {/* Header Section with Reset Button */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 relative">
           <h1 className="text-4xl font-bold text-gray-800">AI Resume Builder</h1>
-          
-          {/* Show 'Start Over' only if there is extracted text (an active session) */}
           {extractedText && (
             <button
               onClick={handleStartOver}
@@ -200,12 +264,11 @@ export default function Home() {
           )}
         </div>
 
-        {/* Step 1: Upload */}
         <div className="bg-white p-6 rounded-lg shadow space-y-4">
           <h2 className="text-xl font-semibold">1. Upload your Current Resume</h2>
           <div className="flex gap-4">
             <input
-              key={resetKey} // Used to force-clear the input on reset
+              key={resetKey} 
               type="file"
               accept=".pdf"
               onChange={handleFileChange}
@@ -221,22 +284,31 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Step 2: Job Description & LinkedIn */}
         {extractedText && (
           <div className="bg-white p-6 rounded-lg shadow space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <h2 className="text-xl font-semibold">2. Enter Details</h2>
-            
-            <div className="space-y-2">
-               <label className="text-sm font-medium text-gray-700">LinkedIn Profile URL (Optional)</label>
-               <input
-                type="text"
-                placeholder="e.g. https://www.linkedin.com/in/yourname"
-                value={linkedinUrl}
-                onChange={(e) => setLinkedinUrl(e.target.value)}
-                className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 text-gray-700"
-              />
+            <div className="grid md:grid-cols-2 gap-4">
+               <div className="space-y-2">
+                 <label className="text-sm font-medium text-gray-700">LinkedIn Profile URL</label>
+                 <input
+                  type="text"
+                  placeholder="https://linkedin.com/in/..."
+                  value={linkedinUrl}
+                  onChange={(e) => setLinkedinUrl(e.target.value)}
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 text-gray-700"
+                />
+              </div>
+              <div className="space-y-2">
+                 <label className="text-sm font-medium text-gray-700">Custom Instructions</label>
+                 <input
+                  type="text"
+                  placeholder="e.g. Ignore my experience before 2018..."
+                  value={customInstructions}
+                  onChange={(e) => setCustomInstructions(e.target.value)}
+                  className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 text-gray-700"
+                />
+              </div>
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Job Description</label>
               <textarea
@@ -246,7 +318,6 @@ export default function Home() {
                 onChange={(e) => setJobDescription(e.target.value)}
               />
             </div>
-            
             <button
               onClick={handleGenerate}
               disabled={!jobDescription || isGenerating}
@@ -257,11 +328,9 @@ export default function Home() {
           </div>
         )}
 
-        {/* Step 3: Result & Download */}
         {rewrittenResume && isClient && (
           <div className="bg-white p-6 rounded-lg shadow space-y-4 border-2 border-green-100">
             <h2 className="text-xl font-semibold text-green-800">3. Your Tailored Resume</h2>
-            
             <div className="flex justify-center gap-4 py-4 flex-wrap">
               <button
                 onClick={downloadPdf}
@@ -269,7 +338,6 @@ export default function Home() {
               >
                 Download PDF
               </button>
-              
               <button
                 onClick={downloadWord}
                 className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 shadow-lg transition-transform hover:scale-105"
@@ -277,7 +345,6 @@ export default function Home() {
                 Download Word / Google Doc
               </button>
             </div>
-
             <details className="mt-4">
               <summary className="cursor-pointer text-gray-500 text-sm">View Raw JSON</summary>
               <div className="p-4 bg-gray-50 rounded h-40 overflow-y-auto font-mono text-xs mt-2">

@@ -37,4 +37,4 @@ jobs:
           context: .
           push: true
           # REPLACE 'georgeudosen' below with your actual Docker Hub username!
-          tags: georgeudosen/ai-resume-builder:latest
+          tags: udoyen/ai-resume-builder:latest

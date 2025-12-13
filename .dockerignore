@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Dockerfile
 .dockerignore
 .git
@@ -6,4 +7,14 @@ node_modules
 npm-debug.log
 README.md
 .env.local
+=======
+Dockerfile
+.dockerignore
+.git
+.next
+node_modules
+npm-debug.log
+README.md
+.env.local
+>>>>>>> 50af16ea8aa23ea431f010081ad017cd6eea3201
 .env
